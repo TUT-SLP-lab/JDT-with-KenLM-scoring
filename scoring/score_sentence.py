@@ -60,11 +60,13 @@ class ScoreSentence(object):
             
             # Show scores and n-gram matches
             if self.logger is not None and self.args.display_ngram_score:
+                self.logger.info('================================================')
                 _ngram_scores = self.ngram.full_scores(parsed_sentence)
                 for i, (prob, length, oov) in enumerate(_ngram_scores):
                     self.logger.info('{0} {1}: {2}'.format(prob, length, ' '.join(words[i+2-length:i+2])))
                     if oov:
                         self.logger.info('\t"{0}" is an OOV'.format(words[i+1]))
+                self.logger.info('================================================')
                         
             results.append((sentence, scorer(ngram_scores)))
             
@@ -89,7 +91,7 @@ class ScoreSentence(object):
         else:
             ret_utt, ret_score = results[0]
         
-        return ret_utt, ret_score, results
+        return ret_utt, ret_score, _results
     
     def preprocess(self, sentence):
         parsed_sentence = self.tagger.parse(sentence)
