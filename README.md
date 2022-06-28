@@ -47,16 +47,31 @@ mv bccwj-csj-np.3g.kn bccwj-csj-np.bin
 ## Run
 Japanese-Dialog-Transformer ディレクトリ下に移動し以下を実行する。
 ```
-python scripts/dialog.py data/sample/bin/  --path checkpoints/japanese-dialog-transformer-1.6B.pt  --beam 80  --min-len 10  --source-lang src  --target-lang dst  --tokenizer space  --bpe sentencepiece  --sentencepiece-model data/dicts/sp_oall_32k.model  --no-repeat-ngram-size 3  --nbest 80  --sampling  --sampling-topp 0.9  --temperature 1.0  --show-nbest 5  --filter-type modified-worst  --filter-threshold -4.8  --used-ngram-model scripts/scoring/models/bccwj-csj-np.bin  --display-ngram-score --display-modified-ngram
+python scripts/dialog.py data/sample/bin/  --path checkpoints/japanese-dialog-transformer-1.6B.pt  --beam 80  --min-len 10  --source-lang src  --target-lang dst  --tokenizer space  --bpe sentencepiece  --sentencepiece-model data/dicts/sp_oall_32k.model  --no-repeat-ngram-size 3  --nbest 80  --sampling  --sampling-topp 0.9  --temperature 1.0  --show-nbest 5  --filter-type depth-harmonic  --filter-threshold -4.8  --used-ngram-model scripts/scoring/models/bccwj-csj-np.bin  --display-ngram-score  --display-modified-ngram  --starting-phrase 松丸さんはお休みは何をしてますか？
 ```
-もし、N-gram言語モデルによるリランキングを行う場合はオプションに以下を追加。
+もし、N-gram言語モデルによるリランキングを行う場合はオプションに以下を追加する。
 ```
 --ngram-reranking
+```
+新たに三河が追加した引数は以下の通り。
+```
+  --filter-type FILTER_TYPE
+                        application KenLM filter
+  --filter-threshold FILTER_THRESHOLD
+                        threshold of filter
+  --used-ngram-model USED_NGRAM_MODEL
+                        n-gram model for KenLM scoring
+  --display-ngram-score
+                        display n-gram score by KenLM
+  --ngram-reranking     re-ranking by n-gram score
+  --remove-contain-oov  remove sentence which hava oov word
+  --display-modified-ngram
+                        display moified ngram analisys
 ```
 
 ## Scoring-Test
 Japanese-Dialog-Transformer ディレクトリ下に移動し以下を実行する。
 ```
-python scripts/scoring/scoring_test.py --filter-type modified-worst --filter-threshold -1.5 --used-ngram-model scripts/scoring/models/bccwj-csj-np.bin --display-ngram-score --remove-contain-oov
+python scripts/scoring/scoring_test.py --filter-type depth-harmonic --filter-threshold -1.5 --used-ngram-model scripts/scoring/models/bccwj-csj-np.bin --display-ngram-score --remove-contain-oov
 ```
 このソースコードはscore_sentence.py内に存在する関数を試験するためのものである。
