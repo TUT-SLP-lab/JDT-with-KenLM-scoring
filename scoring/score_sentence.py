@@ -71,10 +71,11 @@ class ScoreSentence(object):
             results.append((sentence, scorer(ngram_scores)))
             
         _results = results
+        removed_cands = []
         # 閾値以下を除去
         for i, result in enumerate(results):
             if result[1] < self.filter_threshold:
-                results.pop(i)
+                removed_cands.append(results.pop(i))
         
         # 取り敢えず閾値以上の候補が見つからないときは最良のものを選択 -> もう少しいい手を考えたい
         if len(results)==0:
@@ -91,7 +92,7 @@ class ScoreSentence(object):
         else:
             ret_utt, ret_score = results[0]
         
-        return ret_utt, ret_score, _results
+        return ret_utt, ret_score, (results + removed_cands)
     
     def preprocess(self, sentence):
         parsed_sentence = self.tagger.parse(sentence)
