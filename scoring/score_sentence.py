@@ -125,16 +125,20 @@ class ScoreSentence(object):
         """N-gram による対数確率の相加平均を返す．
         """
         prob_sum = 0.0
+        length = 0
         for prob, length, oov in ngram_scores:
             prob_sum += prob
+            length += 1
         
-        return prob_sum/len(ngram_scores)
+        return prob_sum/length
 
     def harmonic_mean(self, ngram_scores):
         """N-gram による確率の調和平均を返す．
         """
         hprob_sum = 0.0
+        length = 0
         for prob, length, oov in ngram_scores:
             hprob_sum += 1/prob
+            length += 1
         
-        return len(ngram_scores)/hprob_sum
+        return length/hprob_sum
