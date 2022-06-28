@@ -98,11 +98,18 @@ class ScoreSentence(object):
                     _results.append(result)
         results = _results
         
-        # 取り敢えず閾値以上の候補が見つからないときは元のスコアの内最良のものを選択 -> もう少しいい手を考えたい
+        # 取り敢えず閾値以上の候補が見つからないときはKenLMスコアの内最良のものを選択 -> もう少しいい手を考えたい
         if len(results)==0:
             if self.logger is not None:
                 self.logger.info('all cands are filtered. threshold={}'.format(self.args.filter_threshold))
-            results = [removed_cands.pop(0)]
+                
+            max_idx = 0
+            max_val = -10000.
+            for i, removed_cand in enumerate(removed_cands):
+                if not removed_cand[2] and (removed_cand[1] > max_val):
+                    max_idx = i
+                    max_val = removed_cand[1]
+            results = [removed_cands.pop(max_idx)]
         
         if self.logger is not None:
             self.logger.info(results)
