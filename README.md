@@ -48,3 +48,7 @@ Japanese-Dialog-Transformer ディレクトリ下に移動。
 ```
 python scripts/dialog.py data/sample/bin/  --path checkpoints/japanese-dialog-transformer-1.6B.pt  --beam 80  --min-len 10  --source-lang src  --target-lang dst  --tokenizer space  --bpe sentencepiece  --sentencepiece-model data/dicts/sp_oall_32k.model  --no-repeat-ngram-size 3  --nbest 80  --sampling  --sampling-topp 0.9  --temperature 1.0  --show-nbest 5  --filter-type worst  --filter-threshold -4.8  --used-ngram-model scripts/scoring/models/bccwj-csj-np.bin  --display-ngram-score
 ```
+もし、N-gram言語モデルによるリランキングを行う場合はオプションに以下を追加。
+```
+--ngram-reranking
+```
