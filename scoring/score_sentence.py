@@ -14,7 +14,8 @@ FILTERS = ['none',
            'modified-worst',
            'geometric',
            'harmonic',
-           'modified-harmonic']
+           'modified-harmonic',
+           'depth-harmonic']
 
 class ScoreSentence(object):
     def __init__(self, args:ArgumentParser, logger:Logger=None):
@@ -51,6 +52,8 @@ class ScoreSentence(object):
             scorer = self.harmonic_mean
         elif self.filter_type == 'modified-harmonic':
             scorer = self.modified_harmonic
+        elif self.filter_type == 'depth-harmonic':
+            scorer = self.depth_harmonic
             
         if self.logger is not None:
             self.logger.info('Scoring by {0} ({1}-gram model)'.format(self.filter_type, self.ngram.order))
@@ -142,19 +145,40 @@ class ScoreSentence(object):
         return parsed_sentence
     
     def total(self, sentences):
-        """N-gram による文全体の対数確率を返す．現在使用禁止
+        """N-gram による文全体の対数確率を返す。
         """
         results = []
         for sentence in sentences:
             parsed_sentence = self.preprocess(sentence)
-            words = parsed_sentence.split()
-            ngram_scores = self.ngram.full_scores(parsed_sentence)
+            # words = parsed_sentence.split()
+            
+            parsed_sentence = re.sub('<sp> ', '<sp>  ', parsed_sentence)
+            parsed_sentences = parsed_sentence.split('<sp>  ')
+            ngram_scores_list = [self.ngram.full_scores(prsd_sent) for prsd_sent in parsed_sentences]
+            words_list = [prsd_sent.split() for prsd_sent in parsed_sentences]
             
             prob_sum = 0.0
             exist_oov = False
-            for i, (prob, n_length, oov) in enumerate(ngram_scores):
-                prob_sum += prob
-                exist_oov = ((oov and '数詞' not in words[i]) or exist_oov)
+            
+            if self.args.display_modified_ngram:
+                self.logger.info('================================================')
+            for ngram_scores, words in zip(ngram_scores_list, words_list):
+                words = ['<s>'] + words + ['</s>']
+                
+                for i, (prob, n_length, oov) in enumerate(ngram_scores):
+                    
+                    if self.args.display_modified_ngram:
+                        self.logger.info('{0} {1}: {2}'.format(prob, n_length, ' '.join(words[i+2-n_length:i+2])))
+                        if oov:
+                            if '数詞' not in words[i+1]:
+                                self.logger.info('\t"{0}" is an OOV'.format(words[i+1]))
+                    
+                    exist_oov = ((oov and '数詞' not in words[i]) or exist_oov)
+                    prob_sum += prob
+                        
+            if self.args.display_modified_ngram:
+                self.logger.info('sentence score: {0}'.format(prob_sum))
+                self.logger.info('================================================')
             results.append((sentence, prob_sum, exist_oov))
             
         return results
@@ -193,6 +217,7 @@ class ScoreSentence(object):
                         prob_min = prob
                         
             if self.args.display_modified_ngram:
+                self.logger.info('sentence score: {0}'.format(prob_min))
                 self.logger.info('================================================')
             results.append((sentence, prob_min, exist_oov))
                 
@@ -241,6 +266,7 @@ class ScoreSentence(object):
                         prob_min = prob
                         
             if self.args.display_modified_ngram:
+                self.logger.info('sentence score: {0}'.format(prob_min))
                 self.logger.info('================================================')
                 
             results.append((sentence, prob_min, exist_oov))
@@ -248,24 +274,45 @@ class ScoreSentence(object):
         return results
 
     def geometric_mean(self, sentences):
-        """N-gram による確率の幾何平均を返す．現在使用不可
+        """N-gram による確率の幾何平均を返す。
         """
         results = []
         for sentence in sentences:
             parsed_sentence = self.preprocess(sentence)
-            words = parsed_sentence.split()
-            ngram_scores = self.ngram.full_scores(parsed_sentence)
+            # words = parsed_sentence.split()
+            
+            parsed_sentence = re.sub('<sp> ', '<sp>  ', parsed_sentence)
+            parsed_sentences = parsed_sentence.split('<sp>  ')
+            ngram_scores_list = [self.ngram.full_scores(prsd_sent) for prsd_sent in parsed_sentences]
+            words_list = [prsd_sent.split() for prsd_sent in parsed_sentences]
             
             prob_sum = 0.0
-            length = 0
             exist_oov = False
-            for i, (prob, n_length, oov) in enumerate(ngram_scores):
-                exist_oov = ((oov and '数詞' not in words[i]) or exist_oov)
-                prob_sum += prob
-                length += 1
-                
-            results.append((sentence, prob_sum/length, exist_oov))
+            length = 0
             
+            if self.args.display_modified_ngram:
+                self.logger.info('================================================')
+            for ngram_scores, words in zip(ngram_scores_list, words_list):
+                words = ['<s>'] + words + ['</s>']
+                
+                for i, (prob, n_length, oov) in enumerate(ngram_scores):
+                    
+                    if self.args.display_modified_ngram:
+                        self.logger.info('{0} {1}: {2}'.format(prob, n_length, ' '.join(words[i+2-n_length:i+2])))
+                        if oov:
+                            if '数詞' not in words[i+1]:
+                                self.logger.info('\t"{0}" is an OOV'.format(words[i+1]))
+                    
+                    exist_oov = ((oov and '数詞' not in words[i]) or exist_oov)
+                    prob_sum += prob
+                    length += 1
+                        
+            score = prob_sum/length
+            if self.args.display_modified_ngram:
+                self.logger.info('sentence score: {0}'.format(score))
+                self.logger.info('================================================')
+            results.append((sentence, score, exist_oov))
+                
         return results
 
     def harmonic_mean(self, sentences):
@@ -304,10 +351,12 @@ class ScoreSentence(object):
                     hprob_sum += 1/prob
                     length += 1
                         
+            score = math.log2(length/hprob_sum)
             if self.args.display_modified_ngram:
+                self.logger.info('sentence score: {0}'.format(score))
                 self.logger.info('================================================')
                     
-            results.append((sentence, math.log2(length/hprob_sum), exist_oov))
+            results.append((sentence, score, exist_oov))
                 
         return results
     
@@ -354,9 +403,66 @@ class ScoreSentence(object):
                     hprob_sum += 1/prob
                     length += 1
                         
+            score = math.log2(length/hprob_sum)
             if self.args.display_modified_ngram:
+                self.logger.info('sentence score: {0}'.format(score))
                 self.logger.info('================================================')
             
-            results.append((sentence, math.log2(length/hprob_sum), exist_oov))
+            results.append((sentence, score, exist_oov))
+                
+        return results
+    
+    def depth_harmonic(self, sentences):
+        """修正調和平均をさらに入力時系列数（次元）に対して修正し、性質をworstに近づけた。
+        ただし、worstとは違い、各入力が似ていても全く同じでなければユニークな値を返すことが可能。
+        """
+        model_order = self.ngram.order
+        results = []
+        for sentence in sentences:
+            parsed_sentence = self.preprocess(sentence)
+            # words = parsed_sentence.split()
+            
+            parsed_sentence = re.sub('<sp> ', '<sp>  ', parsed_sentence)
+            parsed_sentences = parsed_sentence.split('<sp>  ')
+            ngram_scores_list = [self.ngram.full_scores(prsd_sent) for prsd_sent in parsed_sentences]
+            words_list = [prsd_sent.split() for prsd_sent in parsed_sentences]
+            
+            depth = sum([len(words) for words in words_list])
+            power = math.sqrt(depth)
+            
+            hprob_sum = 0.0
+            length = 0
+            exist_oov = False
+            
+            if self.args.display_modified_ngram:
+                self.logger.info('================================================')
+                
+            for ngram_scores, words in zip(ngram_scores_list, words_list):
+                words = ['<s>'] + words + ['</s>']
+                
+                for i, (prob, n_length, oov) in enumerate(ngram_scores):
+                    
+                    # modified
+                    prob = (n_length / model_order)**2 * prob
+                    ##########
+                    
+                    if self.args.display_modified_ngram:
+                        self.logger.info('{0} {1}: {2}'.format(prob, n_length, ' '.join(words[i+2-n_length:i+2])))
+                        if oov:
+                            if '数詞' not in words[i+1]:
+                                self.logger.info('\t"{0}" is an OOV'.format(words[i+1]))
+                        
+                    exist_oov = ((oov and '数詞' not in words[i]) or exist_oov)
+                    
+                    prob = math.pow(10, prob * power) # KenLMはlog10だが，それだと値が非常に小さくなるため、2としている
+                    hprob_sum += 1/prob
+                    length += 1
+                        
+            score = math.log10(math.pow(length/hprob_sum, 1/power))
+            if self.args.display_modified_ngram:
+                self.logger.info('sentence score: {0}'.format(score))
+                self.logger.info('================================================')
+            
+            results.append((sentence, score, exist_oov))
                 
         return results
