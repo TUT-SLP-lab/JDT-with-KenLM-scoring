@@ -83,9 +83,9 @@ class ScoreSentence(object):
         
         if self.logger is not None:
             self.logger.info(results)
-        
-        ret_utt, ret_score = '', -1000000.0
+         
         if self.args.ngram_reranking:
+            ret_utt, ret_score = '', -1000000.0
             for score in results:
                 if score[1] > ret_score:
                     ret_utt, ret_score = score
