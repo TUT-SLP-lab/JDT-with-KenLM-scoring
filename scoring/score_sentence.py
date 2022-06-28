@@ -101,7 +101,16 @@ class ScoreSentence(object):
 
         # bccwj-csj-np.bin 向けの処理
         parsed_sentence = re.sub('。\+補助記号/句点 ', '<sp> ', parsed_sentence)
-        parsed_sentence = parsed_sentence[:-5] if parsed_sentence[-5:] == '<sp> ' else parsed_sentence
+        parsed_sentence = re.sub('．\+補助記号/句点 ', '<sp> ', parsed_sentence)
+        parsed_sentence = re.sub('，\+補助記号/句点 ', '<sp> ', parsed_sentence)
+        parsed_sentence = re.sub('\!\+補助記号/句点 ', '<sp> ', parsed_sentence)
+        parsed_sentence = re.sub('\?\+補助記号/句点 ', '<sp> ', parsed_sentence)
+        parsed_sentence = re.sub('！\+補助記号/句点 ', '<sp> ', parsed_sentence)
+        parsed_sentence = re.sub('？\+補助記号/句点 ', '<sp> ', parsed_sentence)
+        
+        # 使用しているbccwj-csj-npは文末の句点がないため、除去する。
+        while parsed_sentence[-5:] == '<sp> ':
+            parsed_sentence = parsed_sentence[:-5]
         
         return parsed_sentence
     
