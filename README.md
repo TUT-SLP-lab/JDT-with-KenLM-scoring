@@ -1,5 +1,5 @@
 # JDT-with-KenLM-scoring
-Japanese-Dialog-Transformerの応答候補に対して、KenLMによるN-gram言語モデルでスコアリングし、フィルタリング若しくはリランキングを行う。スコアリングの性能だけ見たい場合はREADME.md最下部へ移動してください。
+Japanese-Dialog-Transformerの応答候補に対して、KenLMによるN-gram言語モデルでスコアリングし、フィルタリング若しくはリランキングを行う。スコアリングの性能だけ見たい場合は本プログラム群をダウンロードし、scoringディレクトリ下でREADME.md最下部のコマンドを実行してください。
 
 https://github.com/nttcslab/japanese-dialog-transformers
 
@@ -70,7 +70,7 @@ python scripts/dialog.py data/sample/bin/  --path checkpoints/japanese-dialog-tr
 ```
 
 ## Scoring-Test
-Japanese-Dialog-Transformer ディレクトリ下に移動し以下を実行する。
+scoring ディレクトリ下に移動し以下を実行する。
 ```
 python scripts/scoring/scoring_test.py --filter-type depth-harmonic --filter-threshold -1.5 --used-ngram-model scripts/scoring/models/bccwj-csj-np.bin --display-ngram-score --remove-contain-oov
 ```
