@@ -15,7 +15,8 @@ FILTERS = ['none',
            'geometric',
            'harmonic',
            'modified-harmonic',
-           'depth-harmonic']
+           'depth-harmonic',
+           'log-harmonic']
 
 class ScoreSentence(object):
     def __init__(self, args:ArgumentParser, logger:Logger=None):
@@ -54,6 +55,8 @@ class ScoreSentence(object):
             scorer = self.modified_harmonic
         elif self.filter_type == 'depth-harmonic':
             scorer = self.depth_harmonic
+        elif self.filter_type == 'log-harmonic':
+            scorer = self.log_harmonic
             
         if self.logger is not None:
             self.logger.info('Scoring by {0} ({1}-gram model)'.format(self.filter_type, self.ngram.order))
@@ -79,7 +82,20 @@ class ScoreSentence(object):
                 self.logger.info('================================================')
             
         removed_cands = []
+        oov_cands = []
         _results = []
+        
+        _results = []
+        # oov を含んだ候補文を除去
+        if self.args.remove_contain_oov:
+            for result in results:
+                if result[2]:
+                    oov_cands.append(result)
+                else:
+                    _results.append(result)
+        results = _results
+        _results = []
+        
         # 閾値以下を除去
         for result in results:
             if result[1] < self.filter_threshold:
@@ -88,21 +104,14 @@ class ScoreSentence(object):
                 _results.append(result)
         results = _results
         
-        _results = []
-        # oov を含んだ候補文を除去
-        if self.args.remove_contain_oov:
-            for result in results:
-                if result[2]:
-                    removed_cands.append(result)
-                else:
-                    _results.append(result)
-        results = _results
+        removed_cands = removed_cands + oov_cands
         
-        # 取り敢えず閾値以上の候補が見つからないときはKenLMスコアの内最良のものを選択 -> もう少しいい手を考えたい
+        # 取り敢えず閾値以上の候補が見つからないときは元スコアの内最良のものを選択 -> もう少しいい手を考えたい
         if len(results)==0:
             if self.logger is not None:
                 self.logger.info('all cands are filtered. threshold={}'.format(self.args.filter_threshold))
                 
+            """
             max_idx = 0
             max_val = -10000.
             for i, removed_cand in enumerate(removed_cands):
@@ -110,9 +119,12 @@ class ScoreSentence(object):
                     max_idx = i
                     max_val = removed_cand[1]
             results = [removed_cands.pop(max_idx)]
+            """
+            results = [removed_cands.pop(0)]
         
         if self.logger is not None:
             self.logger.info(results)
+            self.logger.info(removed_cands)
         
         if self.args.ngram_reranking:
             ret_utt, ret_score = '', -1000000.0
@@ -436,6 +448,62 @@ class ScoreSentence(object):
             
             depth = sum([len(words) for words in words_list])
             power = math.sqrt(depth)
+            
+            hprob_sum = 0.0
+            length = 0
+            exist_oov = False
+            
+            if self.args.display_modified_ngram:
+                self.logger.info('================================================')
+                
+            for ngram_scores, words in zip(ngram_scores_list, words_list):
+                words = ['<s>'] + words + ['</s>']
+                
+                for i, (prob, n_length, oov) in enumerate(ngram_scores):
+                    
+                    # modified
+                    prob = (n_length / model_order)**2 * prob
+                    ##########
+                    
+                    if self.args.display_modified_ngram:
+                        self.logger.info('{0} {1}: {2}'.format(prob, n_length, ' '.join(words[i+2-n_length:i+2])))
+                        if oov:
+                            if '数詞' not in words[i+1]:
+                                self.logger.info('\t"{0}" is an OOV'.format(words[i+1]))
+                        
+                    exist_oov = ((oov and '数詞' not in words[i]) or exist_oov)
+                    
+                    prob = math.pow(10, prob * power) # KenLMはlog10だが，それだと値が非常に小さくなるため、2としている
+                    hprob_sum += 1/prob
+                    length += 1
+                        
+            score = math.log10(math.pow(length/hprob_sum, 1/power))
+            if self.args.display_modified_ngram:
+                self.logger.info('sentence score: {0}'.format(score))
+                self.logger.info('================================================')
+            
+            results.append((sentence, score, exist_oov))
+                
+        return results
+    
+    def log_harmonic(self, sentences):
+        """修正調和平均をさらに入力時系列数（次元）に対して修正し、性質をworstに近づけた。
+        ただし、worstとは違い、各入力が似ていても全く同じでなければユニークな値を返すことが可能。
+        系列長に対する修正指数をlogに変更。-> 系列が長くなるほど効果低い。今後の結果次第
+        """
+        model_order = self.ngram.order
+        results = []
+        for sentence in sentences:
+            parsed_sentence = self.preprocess(sentence)
+            # words = parsed_sentence.split()
+            
+            parsed_sentence = re.sub('<sp> ', '<sp>  ', parsed_sentence)
+            parsed_sentences = parsed_sentence.split('<sp>  ')
+            ngram_scores_list = [self.ngram.full_scores(prsd_sent) for prsd_sent in parsed_sentences]
+            words_list = [prsd_sent.split() for prsd_sent in parsed_sentences]
+            
+            depth = sum([len(words) for words in words_list])
+            power = math.log2(depth+1)
             
             hprob_sum = 0.0
             length = 0
