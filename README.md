@@ -1,5 +1,6 @@
 # JDT-with-KenLM-scoring
-Japanese-Dialog-Transformerの応答候補に対して、KenLMによるN-gram言語モデルでスコアリングし、フィルタリング若しくはリランキングを行う。スコアリングの性能だけ見たい場合は本プログラム群をダウンロードし、scoringディレクトリ下でREADME.md最下部のコマンドを実行してください。
+Japanese-Dialog-Transformerの応答候補に対して、KenLMによるN-gram言語モデルでスコアリングし、フィルタリング若しくはリランキングを行う。
+スコアリングの性能だけ見たい場合は、依存ライブラリのインストールを行い本プログラム群をダウンロードし、scoringディレクトリ下でREADME.md最下部のコマンドを実行してください。
 
 https://github.com/nttcslab/japanese-dialog-transformers
 
